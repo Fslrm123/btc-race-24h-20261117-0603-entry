@@ -1,27 +1,35 @@
-// DipBuyer v4: a long-only dip-buying bot for the cbBTC 24h race.
+// DipBuyer v5: a long-only dip-buying bot for the cbBTC 24h race.
 //
-// The race charges ~26 bps for a full-size round trip (4 bps fee, 2 bps
-// slippage, ~20 bps of price impact on the pool), so a trade only makes
-// sense when the expected move is several times that. This bot waits for a
-// sharp intraday dip — the close at least DROP_BPS below the highest close
-// of the last LOOKBACK bars — buys with the full cash balance, and sells the
+// Round 2 finding: the dev window is flat/ranging on short horizons (net
+// +49 bps over 24h, median 1-bar move ~3 bps), so short-lookback dip
+// buying tops out near +$18 and micro-scalping loses money after the ~35
+// bps full-size round-trip cost (4 bps fee, 2 bps slippage, ~11 bps of
+// price impact per leg at the pool's ~$880k depth). The money in this
+// window is in the multi-hour swings (e.g. a +169 bps hour followed by a
+// -112 bps hour), so this bot waits for a deep dip against a SIX-HOUR
+// rolling high — the close at least DROP_BPS below the highest close of
+// the last LOOKBACK_BARS — buys with the full cash balance, and sells the
 // whole position once the close has bounced BOUNCE_BPS above the entry
 // close. If the bounce never comes the position is simply held to the end
-// of the window, where the replay flattens it: cutting a dip trade early
-// on a timer turned a winning out-of-sample window into a losing one for
-// the earlier version of this bot, so there is no forced exit here.
+// of the window, where the replay flattens it.
+//
+// The 150/170 bps region is a plateau, not a knife edge: 19 of 45 nearby
+// (lookback, dip, bounce) combinations beat the v4 bot's +$17.64 on the
+// dev window, and 6 clear +$25. This variant (360/170/170) is the best
+// of the grid at +$30.01 in the offline replay, 2 trades, both wins,
+// max drawdown 0.77%.
 //
 // One position at a time, full cash in, full position out. No shorts, no
-// leverage, no indicators beyond the rolling high, no randomness, no wall
-// clock: every decision is a pure function of the bars seen so far, so the
-// two official executions agree byte for byte.
+// leverage, no randomness, no wall clock: every decision is a pure
+// function of the bars seen so far, so the two official executions agree
+// byte for byte.
 
 import { runBars, type BarsState, type Batch, type OrderInput } from './vendor/makefun-bars.ts';
 
 const SYMBOL = 'CBBTC';
-const LOOKBACK_BARS = 45;
-const DROP_BPS = 110n;
-const BOUNCE_BPS = 100n;
+const LOOKBACK_BARS = 360;
+const DROP_BPS = 170n;
+const BOUNCE_BPS = 170n;
 const MAX_SLIPPAGE_BPS = 100;
 const MIN_NOTIONAL_UNITS = 1_000_000n; // 1 USDC, the replay's minimum
 
